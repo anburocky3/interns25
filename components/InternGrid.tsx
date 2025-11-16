@@ -1,6 +1,6 @@
 "use client";
 import React, { useMemo, useState } from "react";
-import type { Intern } from "@/data/interns";
+import type { Intern } from "@/data/internsData";
 import InternCard from "@/components/InternCard";
 
 export default function InternGrid({ interns }: { interns: Intern[] }) {

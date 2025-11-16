@@ -1,3 +1,5 @@
+"use client";
+
 import AttendanceCheckin from "@/components/AttendanceCheckin";
 import { useAuth } from "@/context/AuthContext";
 

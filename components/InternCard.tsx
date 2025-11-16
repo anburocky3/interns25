@@ -1,7 +1,7 @@
 "use client";
 import React from "react";
 import Image from "next/image";
-import type { Intern } from "@/data/interns";
+import type { Intern } from "@/data/internsData";
 import {
   GraduationCap,
   Wifi,

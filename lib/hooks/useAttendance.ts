@@ -9,6 +9,9 @@ import {
   orderBy,
   serverTimestamp,
   type FirestoreError,
+  type Query,
+  type DocumentData,
+  type Timestamp,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
@@ -25,14 +28,22 @@ export function useAttendance(opts?: {
   date?: string;
   admin?: boolean;
 }) {
-  const [records, setRecords] = useState<any[]>([]);
+  type AttendanceRecord = {
+    id: string;
+    userId: string;
+    date: string;
+    status?: string;
+    checkInTime?: Timestamp | null;
+  };
+
+  const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<FirestoreError | null>(null);
 
   useEffect(() => {
     const dateStr = opts?.date ?? todayString();
     const col = collection(db, "attendance");
-    let q: any;
+    let q: Query<DocumentData> | null = null;
     if (opts?.admin) {
       q = query(
         col,
@@ -46,19 +57,28 @@ export function useAttendance(opts?: {
         where("userId", "==", opts.userId)
       );
     } else {
-      // nothing to listen to
-      setRecords([]);
-      setLoading(false);
+      // nothing to listen to — defer state updates to avoid synchronous setState in effect
+      Promise.resolve().then(() => {
+        setRecords([]);
+        setLoading(false);
+      });
       return;
     }
 
     const unsub = onSnapshot(
-      q,
+      q as Query<DocumentData>,
       (snap) => {
-        const items: any[] = [];
-        snap.forEach((doc) =>
-          items.push({ id: doc.id, ...(doc.data() as any) })
-        );
+        const items: AttendanceRecord[] = [];
+        snap.forEach((doc) => {
+          const d = doc.data();
+          items.push({
+            id: doc.id,
+            userId: String(d.userId ?? ""),
+            date: String(d.date ?? ""),
+            status: d.status as string | undefined,
+            checkInTime: (d.checkInTime as Timestamp) ?? null,
+          });
+        });
         setRecords(items);
         setLoading(false);
       },
