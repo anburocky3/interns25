@@ -1,5 +1,6 @@
 "use client";
 import React, { createContext, useContext, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { auth, googleProvider, db } from "@/lib/firebase";
 import {
   onAuthStateChanged,
@@ -7,9 +8,16 @@ import {
   signOut as firebaseSignOut,
   type User as FirebaseUser,
 } from "firebase/auth";
-import { doc, getDoc, setDoc, onSnapshot } from "firebase/firestore";
-
-const ALLOWED_EMAILS = ["anbuceo@gmail.com", "user2@gmail.com"];
+import {
+  doc,
+  getDoc,
+  setDoc,
+  onSnapshot,
+  collection,
+  query,
+  where,
+  getDocs,
+} from "firebase/firestore";
 
 interface AuthContextValue {
   user: FirebaseUser | null;
@@ -29,6 +37,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [role, setRole] = useState<"intern" | "admin" | null>(null);
   const [loading, setLoading] = useState(true);
   const [deniedMessage, setDeniedMessage] = useState<string | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (u) => {
@@ -43,7 +52,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       }
 
       const email = u.email ?? "";
-      if (!ALLOWED_EMAILS.includes(email)) {
+      // Check Firestore-backed whitelist collection for allowed emails.
+      const isAllowed = async (e: string) => {
+        if (!e) return false;
+        try {
+          const allowedRef = collection(db, "allowedUsers");
+          const q = query(allowedRef, where("email", "==", e));
+          const snap = await getDocs(q);
+          if (!snap.empty) return true;
+          // Fallback: check if a doc exists with the email as ID
+          const byId = await getDoc(doc(db, "allowedUsers", e));
+          return byId.exists();
+        } catch (err) {
+          console.error("Error checking allowedUsers whitelist:", err);
+          return false;
+        }
+      };
+
+      if (!(await isAllowed(email))) {
         // Sign out disallowed users immediately and set a denied message
         try {
           await firebaseSignOut(auth);
@@ -92,14 +118,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     const result = await signInWithPopup(auth, googleProvider);
     const u = result.user;
     const email = u.email ?? "";
-    if (!ALLOWED_EMAILS.includes(email)) {
+    const check = async (e: string) => {
+      if (!e) return false;
+      try {
+        const allowedRef = collection(db, "allowedUsers");
+        const q = query(allowedRef, where("email", "==", e));
+        const snap = await getDocs(q);
+        if (!snap.empty) return true;
+        const byId = await getDoc(doc(db, "allowedUsers", e));
+        return byId.exists();
+      } catch (err) {
+        console.error("Error checking allowedUsers whitelist:", err);
+        return false;
+      }
+    };
+
+    if (!(await check(email))) {
       try {
         await firebaseSignOut(auth);
       } catch {
         // ignore
       }
       throw new Error(
-        "This portal is for internship candidates only. Access denied."
+        "This portal is for cyberdude internship candidates only. Access denied."
       );
     }
 
@@ -114,11 +155,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         },
         { merge: true }
       );
+      // Redirect to dashboard after successful sign-in
+      try {
+        router.push("/dashboard");
+      } catch (err) {
+        console.warn("Unable to redirect after sign-in:", err);
+      }
     }
   };
 
   const signOut = async () => {
     await firebaseSignOut(auth);
+
+    if (user) {
+      try {
+        router.push("/");
+      } catch (err) {
+        console.warn("Unable to redirect after sign-out:", err);
+      }
+    }
   };
 
   return (
