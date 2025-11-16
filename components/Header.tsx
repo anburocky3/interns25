@@ -7,7 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 import { usePathname } from "next/navigation";
 
 export const Header: React.FC = () => {
-  const { signInWithGoogle, deniedMessage, user, signOut } = useAuth();
+  const { signInWithGoogle, deniedMessage, user, signOut, role } = useAuth();
   const pathname = usePathname();
 
   const [alertOpen, setAlertOpen] = useState(false);
@@ -74,9 +74,11 @@ export const Header: React.FC = () => {
                 />
                 <div className="flex flex-col">
                   <span className="text-sm font-medium whitespace-nowrap">
-                    {user.displayName ?? user.email?.split("@")[0] ?? "User"}
+                    {user.displayName?.split(" ")[0] ??
+                      user.email?.split("@")[0] ??
+                      "User"}
                   </span>
-                  <span className="text-xs">{user.email}</span>
+                  <span className="text-xs">{role}</span>
                 </div>
                 <button
                   aria-label="Logout"
