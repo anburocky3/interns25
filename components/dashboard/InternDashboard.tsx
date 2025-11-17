@@ -10,6 +10,7 @@ import {
 import { doc, onSnapshot, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { ArrowLeft, GraduationCap, Wifi } from "lucide-react";
+import toast from "react-hot-toast";
 import Head from "next/head";
 
 type SocialLinks = {
@@ -45,7 +46,6 @@ export default function InternDashboard() {
   const [endDate, setEndDate] = useState<string | null>(null);
   const [profile, setProfile] = useState<Profile>({});
   const [social, setSocial] = useState<SocialLinks>({});
-  const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -142,12 +142,14 @@ export default function InternDashboard() {
           isStudent: profile.isStudent ?? false,
           hasWifi: profile.hasWifi ?? false,
           location: profile.location ?? null,
+          mobile: profile.mobile ?? null,
         },
         { merge: true }
       );
-      setEditing(false);
+      toast.success("Profile saved");
     } catch (err) {
       console.error("Error saving profile:", err);
+      toast.error("Failed to save profile");
     } finally {
       setSaving(false);
     }
@@ -312,6 +314,7 @@ export default function InternDashboard() {
                   onChange={(e) =>
                     setProfile((p) => ({ ...p, email: e.target.value }))
                   }
+                  disabled
                   placeholder="you@example.com"
                   className="mt-1 w-full rounded-lg px-3 py-2 bg-slate-800/60 border border-white/6 text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
                 />
@@ -374,30 +377,13 @@ export default function InternDashboard() {
               </div>
             </div>
             <div className="mt-4 text-right">
-              {editing ? (
-                <>
-                  <button
-                    onClick={() => setEditing(false)}
-                    className="mr-2 px-4 py-2 rounded-full bg-white/6 text-white hover:bg-white/8 transition"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={saveProfile}
-                    disabled={saving}
-                    className="px-4 py-2 rounded-full bg-rose-500 text-white hover:bg-rose-400 transition shadow"
-                  >
-                    {saving ? "Saving..." : "Save Profile"}
-                  </button>
-                </>
-              ) : (
-                <button
-                  onClick={() => setEditing(true)}
-                  className="px-4 py-2 rounded-full bg-sky-500 text-white hover:bg-sky-400 transition shadow"
-                >
-                  Edit Profile
-                </button>
-              )}
+              <button
+                onClick={saveProfile}
+                disabled={saving}
+                className="px-4 py-1 rounded-full bg-emerald-500 text-white hover:bg-emerald-400 transition shadow"
+              >
+                {saving ? "Saving..." : "Save"}
+              </button>
             </div>
           </div>
 

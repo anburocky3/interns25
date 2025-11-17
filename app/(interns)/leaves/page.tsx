@@ -17,6 +17,7 @@ import {
 import { db } from "@/lib/firebase";
 import Head from "next/head";
 import { formatIsoDate } from "@/lib/helpers";
+import toast from "react-hot-toast";
 
 type LeaveStatus = "pending" | "approved" | "rejected";
 
@@ -96,9 +97,11 @@ export default function LeavesPage() {
       setStartDate("");
       setEndDate("");
       setReason("");
+        toast.success("Leave request submitted");
     } catch (err) {
       console.error(err);
       setError("Failed to apply for leave. Try again.");
+        toast.error("Failed to submit leave request");
     } finally {
       setSaving(false);
     }
@@ -109,9 +112,11 @@ export default function LeavesPage() {
     if (!confirm("Cancel this pending leave request?")) return;
     try {
       await deleteDoc(doc(db, "leaves", id));
+      toast.success("Leave request cancelled");
     } catch (err) {
       console.error(err);
       setError("Failed to cancel leave.");
+      toast.error("Failed to cancel leave");
     }
   };
 
