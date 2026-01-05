@@ -18,6 +18,8 @@ function shuffle<T>(arr: T[]) {
 type gender = "all" | "M" | "F";
 
 export default function PresentationGenerator({ interns }: Props) {
+  console.log(interns);
+
   const [gender, setGender] = useState<gender>("all");
   const [onlyStudents, setOnlyStudents] = useState(false);
   const [onlyWifi, setOnlyWifi] = useState(false);
@@ -25,7 +27,7 @@ export default function PresentationGenerator({ interns }: Props) {
   const [queue, setQueue] = useState<InternProfile[]>([]);
   const [presentedIds, setPresentedIds] = useState<string[]>([]);
 
-  const [runningTimerSeconds, setRunningTimerSeconds] = useState<number>(0);
+  const [runningTimerSeconds, setRunningTimerSeconds] = useState<number>(30);
   const [countdown, setCountdown] = useState<number | null>(null);
   const [expired, setExpired] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
@@ -285,6 +287,19 @@ export default function PresentationGenerator({ interns }: Props) {
   function resetPresented() {
     setPresentedIds([]);
     localStorage.removeItem("presentation_presented_ids");
+    setQueue([]);
+    setCountdown(null);
+    setIsRunning(false);
+    setExpired(false);
+    setRunningTimerSeconds(0);
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    if (lowTimeIntervalRef.current) {
+      clearInterval(lowTimeIntervalRef.current);
+      lowTimeIntervalRef.current = null;
+    }
   }
 
   function formatCountdown(c: number | null) {
@@ -300,250 +315,332 @@ export default function PresentationGenerator({ interns }: Props) {
   }
 
   return (
-    <div className=" p-4 rounded-lg shadow-md text-white">
-      <div className="flex gap-6">
-        <div className="flex-1 bg-gray-900 rounded border border-gray-800 p-4">
-          <div className="mb-4">
-            <div className="flex gap-4 items-center">
-              <div className="w-56 h-56 bg-neutral-800 rounded overflow-hidden flex items-center justify-center relative">
-                {queue[0] ? (
-                  <>
-                    <Image
-                      src={
-                        queue[0].avatar ||
-                        (queue[0].social?.github
-                          ? `https://github.com/${queue[0].social.github
-                              .split("/")
-                              .pop()}.png`
-                          : "/default-avatar.png")
-                      }
-                      alt={queue[0].name}
-                      width={224}
-                      height={224}
-                      className="object-cover w-full h-full"
-                    />
-                    {queue[0]?.isStudent ? (
-                      <div className="absolute top-2 right-2 w-8 h-8 rounded-full bg-blue-700 flex items-center justify-center">
-                        <GraduationCap size={14} color="white" />
+    <div className="min-h-screen bg-linear-to-b  p-6">
+      <div className="max-w-7xl mx-auto">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Main Content */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Current Presenter Card */}
+            <div className="bg-linear-to-br from-neutral-800 to-neutral-900 rounded-2xl border border-neutral-700 p-8 shadow-xl">
+              {queue[0] ? (
+                <>
+                  <div className="flex flex-col sm:flex-row gap-6 items-start">
+                    {/* Avatar */}
+                    <div className="w-48 h-48 rounded-xl overflow-hidden shrink-0 shadow-lg border-2 border-blue-500/30 hover:border-blue-500/60 transition-colors relative group">
+                      <Image
+                        src={
+                          queue[0].avatar ||
+                          (queue[0].social?.github
+                            ? `https://github.com/${queue[0].social.github
+                                .split("/")
+                                .filter(Boolean)
+                                .pop()}.png`
+                            : "/default-avatar.png")
+                        }
+                        alt={queue[0].name}
+                        width={192}
+                        height={192}
+                        className="object-cover w-full h-full"
+                      />
+                      {queue[0]?.isStudent ? (
+                        <div className="absolute top-3 right-3 w-10 h-10 rounded-full bg-linear-to-br from-blue-500 to-blue-700 flex items-center justify-center shadow-lg">
+                          <GraduationCap size={20} color="white" />
+                        </div>
+                      ) : null}
+                    </div>
+
+                    {/* Info & Controls */}
+                    <div className="flex-1">
+                      <h3 className="text-4xl font-bold text-white mb-1">
+                        {queue[0].name}
+                      </h3>
+                      <p className="text-lg text-blue-400 mb-6">
+                        {queue[0].position || "Intern"}
+                      </p>
+
+                      {/* Timer Display */}
+                      <div
+                        className={`mb-6 p-4 rounded-lg border-2 transition-all ${
+                          expired
+                            ? "bg-red-900/20 border-red-500/50"
+                            : "bg-blue-900/20 border-blue-500/50"
+                        }`}
+                      >
+                        <div className="text-sm text-gray-400 mb-1">
+                          Time Remaining
+                        </div>
+                        <div
+                          className={`text-3xl font-bold ${
+                            expired ? "text-red-400" : "text-blue-400"
+                          }`}
+                        >
+                          {expired ? "Time's Up!" : formatCountdown(countdown)}
+                        </div>
                       </div>
-                    ) : null}
-                  </>
-                ) : (
-                  <div className="text-gray-400">No member</div>
+
+                      {/* Action Buttons */}
+                      <div className="flex flex-col sm:flex-row gap-3">
+                        <button
+                          className={`flex-1 px-6 py-3 rounded-lg font-semibold transition-all flex items-center justify-center gap-2 ${
+                            isRunning
+                              ? "bg-red-600 hover:bg-red-700 shadow-lg shadow-red-600/30"
+                              : "bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-600/30"
+                          } text-white disabled:opacity-50`}
+                          onClick={() => {
+                            if (isRunning) {
+                              pauseTimer();
+                              return;
+                            }
+                            if (expired) {
+                              markPresented();
+                              return;
+                            }
+                            if (countdown !== null && queue.length > 0) {
+                              startTimer(countdown);
+                            } else if (queue.length > 0) {
+                              startTimer(runningTimerSeconds);
+                            }
+                          }}
+                        >
+                          {isRunning
+                            ? "⏸ Pause"
+                            : expired
+                            ? "▶ Start"
+                            : countdown === null
+                            ? "▶ Start"
+                            : "▶ Resume"}
+                        </button>
+
+                        <button
+                          className="flex-1 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold transition-all shadow-lg shadow-emerald-600/30 disabled:opacity-50"
+                          onClick={() => markPresented()}
+                          disabled={!queue[0]}
+                        >
+                          ✓ Mark Presented
+                        </button>
+                        <button
+                          className="flex-1 px-6 py-3 bg-slate-600 hover:bg-slate-700 text-white rounded-lg font-semibold transition-all disabled:opacity-50"
+                          onClick={() => skipOne()}
+                          disabled={queue.length <= 1}
+                        >
+                          ⤵ Skip
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="text-center py-12">
+                  <p className="text-gray-400 text-lg">No presenter in queue</p>
+                  <p className="text-gray-500 text-sm mt-2">
+                    Generate a queue to get started
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Upcoming Queue */}
+            <div className="bg-neutral-800/50 rounded-2xl border border-neutral-700 p-6 backdrop-blur-sm">
+              <h4 className="text-lg font-semibold text-white mb-4">
+                Coming Up
+              </h4>
+              <div className="text-sm text-gray-400 mb-4 space-y-1">
+                <div>
+                  📊 {Math.max(0, queue.length - 1)} remaining presenters
+                </div>
+                <div>⏱ {formatCountdown(runningTimerSeconds)} per person</div>
+                {queue.length > 1 && (
+                  <div>
+                    ⏲ Est. total:{" "}
+                    {formatCountdown(
+                      (queue.length - 1) * (runningTimerSeconds || 0)
+                    )}
+                  </div>
                 )}
+              </div>
+              <div className="flex gap-3 overflow-x-auto pb-3">
+                {queue.slice(1, 13).map((m, idx) => (
+                  <div key={m.uid} className="shrink-0">
+                    <div className="relative group">
+                      <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-black/80 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
+                        {idx + 1}. {m.name}
+                      </div>
+                      <div className="w-24 h-24 rounded-lg overflow-hidden bg-neutral-700 relative shadow-lg border border-neutral-600 hover:border-blue-500/50 transition-colors">
+                        <Image
+                          src={
+                            m.avatar ||
+                            (m.social?.github
+                              ? `https://github.com/${m.social.github
+                                  .split("/")
+                                  .filter(Boolean)
+                                  .pop()}.png`
+                              : "/default-avatar.png")
+                          }
+                          alt={m.name}
+                          width={96}
+                          height={96}
+                          className="object-cover w-full h-full"
+                        />
+                        {m.isStudent ? (
+                          <div className="absolute top-1 right-1 w-5 h-5 rounded-full bg-blue-600 flex items-center justify-center shadow-md border border-blue-400">
+                            <GraduationCap size={12} color="white" />
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Sidebar Controls */}
+          <div className="lg:col-span-1">
+            <div className="sticky top-6 bg-linear-to-br from-neutral-800 to-neutral-900 rounded-2xl border border-neutral-700 p-6 shadow-xl space-y-6">
+              <div>
+                <label className="text-sm font-semibold text-white block mb-3">
+                  Gender Filter
+                </label>
+                <select
+                  value={gender}
+                  onChange={(e) => setGender(e.target.value as gender)}
+                  className="w-full px-4 py-2 rounded-lg bg-neutral-700/50 text-white border border-neutral-600 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+                >
+                  <option value="all">All Genders</option>
+                  <option value="M">Male</option>
+                  <option value="F">Female</option>
+                </select>
               </div>
 
               <div>
-                <div className="text-3xl font-semibold">
-                  {queue[0]?.name ?? "—"}
-                </div>
-                <div className="text-base text-gray-300">
-                  {queue[0]?.position ?? ""}
-                </div>
-                <div className="mt-3">
-                  <div className="text-sm">
-                    {expired ? (
-                      <span className="text-red-400">
-                        Time&apos;s up — click Start
-                      </span>
-                    ) : (
-                      `Timer: ${formatCountdown(countdown)}`
-                    )}
-                  </div>
-                  <div className="mt-4 flex gap-2">
-                    {/* Single toggle button: Pause when running, Resume/Start when paused/expired */}
-                    <button
-                      className={`px-3 py-1 rounded ${
-                        isRunning ? "bg-red-600" : "bg-blue-600"
-                      }`}
-                      onClick={() => {
-                        if (isRunning) {
-                          pauseTimer();
-                          return;
-                        }
-                        // not running: if expired -> mark presented and advance
-                        if (expired) {
-                          markPresented();
-                          return;
-                        }
-                        // resume from saved countdown if present, otherwise start fresh
-                        if (countdown !== null && queue.length > 0) {
-                          startTimer(countdown);
-                        } else if (queue.length > 0) {
-                          startTimer(runningTimerSeconds);
-                        }
-                      }}
-                    >
-                      {isRunning
-                        ? "Pause"
-                        : expired
-                        ? "Start"
-                        : countdown === null
-                        ? "Start"
-                        : "Resume"}
-                    </button>
-
-                    <button
-                      className="px-3 py-1 bg-emerald-600 rounded"
-                      onClick={() => markPresented()}
-                      disabled={!queue[0]}
-                    >
-                      Mark Presented
-                    </button>
-                    <button
-                      className="px-3 py-1 bg-slate-600 rounded"
-                      onClick={() => skipOne()}
-                      disabled={queue.length <= 1}
-                    >
-                      Skip
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <h4 className="text-sm font-medium mb-2">Upcoming</h4>
-            <div className="text-xs text-gray-400 mb-2">
-              {Math.max(0, queue.length - 1)} remaining • Per person:{" "}
-              {formatCountdown(runningTimerSeconds)}
-              {queue.length > 1 ? (
-                <span>
-                  {" "}
-                  • Est total:{" "}
-                  {formatCountdown(
-                    (queue.length - 1) * (runningTimerSeconds || 0)
-                  )}
-                </span>
-              ) : null}
-            </div>
-            <div className="flex gap-2 overflow-x-auto pb-2">
-              {queue.slice(1, 13).map((m) => (
-                <div key={m.uid} className="w-20 text-center">
-                  <div className="w-20 h-20 rounded overflow-hidden bg-neutral-800 mx-auto relative">
-                    <Image
-                      src={
-                        m.avatar ||
-                        (m.social?.github
-                          ? `https://github.com/${m.social.github
-                              .split("/")
-                              .pop()}.png`
-                          : "/default-avatar.png")
-                      }
-                      alt={m.name}
-                      width={80}
-                      height={80}
-                      className="object-cover w-full h-full"
+                <label className="text-sm font-semibold text-white block mb-3">
+                  Filters
+                </label>
+                <div className="space-y-3">
+                  <label className="flex items-center gap-3 cursor-pointer group">
+                    <input
+                      type="checkbox"
+                      checked={onlyStudents}
+                      onChange={(e) => setOnlyStudents(e.target.checked)}
+                      className="w-4 h-4 rounded accent-blue-600"
                     />
-                    {m.isStudent ? (
-                      <div className="absolute top-1 right-1 w-5 h-5 rounded-full bg-blue-700 flex items-center justify-center">
-                        <GraduationCap size={12} color="white" />
-                      </div>
-                    ) : null}
+                    <span className="text-sm text-gray-300 group-hover:text-white transition-colors">
+                      Students Only
+                    </span>
+                  </label>
+                  <label className="flex items-center gap-3 cursor-pointer group">
+                    <input
+                      type="checkbox"
+                      checked={onlyWifi}
+                      onChange={(e) => setOnlyWifi(e.target.checked)}
+                      className="w-4 h-4 rounded accent-blue-600"
+                    />
+                    <span className="text-sm text-gray-300 group-hover:text-white transition-colors">
+                      Has Wi-Fi
+                    </span>
+                  </label>
+                </div>
+              </div>
+
+              <div className="border-t border-neutral-700 pt-6">
+                <div className="text-sm text-gray-400 mb-3">
+                  <span className="font-semibold text-blue-400">
+                    {available.filter((i) => i.uid !== queue[0]?.uid).length}
+                  </span>{" "}
+                  available presenters
+                </div>
+              </div>
+
+              <div className="border-t border-neutral-700 pt-6">
+                <label className="text-sm font-semibold text-white block mb-3">
+                  Timer Settings
+                </label>
+
+                <div className="mb-4 space-y-2">
+                  <div className="grid grid-cols-4 gap-2">
+                    <button
+                      type="button"
+                      className="px-2 py-2 bg-neutral-700 hover:bg-blue-600 text-white text-xs rounded-lg transition-colors"
+                      onClick={() => setRunningTimerSeconds((s) => s + 180)}
+                    >
+                      +3m
+                    </button>
+                    <button
+                      type="button"
+                      className="px-2 py-2 bg-neutral-700 hover:bg-blue-600 text-white text-xs rounded-lg transition-colors"
+                      onClick={() => setRunningTimerSeconds((s) => s + 300)}
+                    >
+                      +5m
+                    </button>
+                    <button
+                      type="button"
+                      className="px-2 py-2 bg-neutral-700 hover:bg-blue-600 text-white text-xs rounded-lg transition-colors"
+                      onClick={() => setRunningTimerSeconds((s) => s + 600)}
+                    >
+                      +10m
+                    </button>
+                    <button
+                      type="button"
+                      className="px-2 py-2 bg-neutral-700 hover:bg-blue-600 text-white text-xs rounded-lg transition-colors"
+                      onClick={() => setRunningTimerSeconds((s) => s + 900)}
+                    >
+                      +15m
+                    </button>
                   </div>
-                  <div className="text-xs mt-1 truncate">{m.name}</div>
                 </div>
-              ))}
-            </div>
-          </div>
-        </div>
 
-        <aside className="w-80">
-          <div className="bg-neutral-800 p-3 rounded">
-            <label className="text-sm block mb-1">Gender</label>
-            <select
-              value={gender}
-              onChange={(e) => setGender(e.target.value as gender)}
-              className="w-full px-2 py-1 rounded bg-neutral-700 text-white"
-            >
-              <option value="all">All</option>
-              <option value="M">Male</option>
-              <option value="F">Female</option>
-            </select>
-
-            <div className="mt-3">
-              <label className="text-sm block mb-1">Filters</label>
-              <div className="flex flex-col gap-2">
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={onlyStudents}
-                    onChange={(e) => setOnlyStudents(e.target.checked)}
-                  />
-                  <span className="text-sm">Students</span>
-                </label>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={onlyWifi}
-                    onChange={(e) => setOnlyWifi(e.target.checked)}
-                  />
-                  <span className="text-sm">Has Wi‑Fi</span>
-                </label>
-              </div>
-            </div>
-
-            <div className="mt-3 text-sm text-gray-300">
-              {available.filter((i) => i.uid !== queue[0]?.uid).length}{" "}
-              available
-            </div>
-
-            <div className="mt-4">
-              <div className="flex justify-between">
-                <label className="text-sm block mb-1">Timer</label>
-                <div className="flex items-center space-x-2">
-                  <button
-                    type="button"
-                    className="text-sm px-2 py-0.5 "
-                    onClick={() => setRunningTimerSeconds((s) => s + 300)}
-                  >
-                    +5m
-                  </button>
-                  <button
-                    type="button"
-                    className="text-sm px-2 py-0.5 "
-                    onClick={() => setRunningTimerSeconds((s) => s + 600)}
-                  >
-                    +10m
-                  </button>
-                  <button
-                    type="button"
-                    className="text-sm px-2 py-0.5 "
-                    onClick={() => setRunningTimerSeconds((s) => s + 900)}
-                  >
-                    +15m
-                  </button>
+                <div className="mb-4">
+                  <div className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">
+                    Duration
+                  </div>
+                  <div className="text-3xl font-bold text-blue-400 mb-4">
+                    {formatCountdown(runningTimerSeconds)}
+                  </div>
+                  <div className="flex gap-1 bg-neutral-700/30 p-1 rounded-lg border border-neutral-600/50">
+                    <button
+                      type="button"
+                      className="flex-1 px-2 py-2 text-sm font-medium text-gray-300 hover:text-white hover:bg-neutral-600/50 rounded transition-colors"
+                      onClick={() =>
+                        setRunningTimerSeconds((s) => Math.max(5, s - 60))
+                      }
+                      title="Remove 1 minute"
+                    >
+                      −1m
+                    </button>
+                    <input
+                      aria-label="Timer seconds"
+                      type="number"
+                      min={30}
+                      value={runningTimerSeconds}
+                      onChange={(e) =>
+                        setRunningTimerSeconds(
+                          Math.max(30, Number(e.target.value || 0))
+                        )
+                      }
+                      className="flex-1 px-2 py-2 bg-transparent text-white text-sm font-medium text-center border-l border-r border-neutral-600/30 focus:outline-none"
+                    />
+                    <button
+                      type="button"
+                      className="flex-1 px-2 py-2 text-sm font-medium text-gray-300 hover:text-white hover:bg-neutral-600/50 rounded transition-colors"
+                      onClick={() => setRunningTimerSeconds((s) => s + 60)}
+                      title="Add 1 minute"
+                    >
+                      +1m
+                    </button>
+                  </div>
                 </div>
-              </div>
-              <div className="mt-3">
-                <div className="text-sm text-gray-300 mb-2">
-                  Selected time: {formatCountdown(runningTimerSeconds)}
-                </div>
-                <input
-                  aria-label="Timer seconds"
-                  type="number"
-                  min={5}
-                  value={runningTimerSeconds}
-                  onChange={(e) =>
-                    setRunningTimerSeconds(
-                      Math.max(5, Number(e.target.value || 0))
-                    )
-                  }
-                  className="w-full px-2 py-1 rounded bg-neutral-700 text-white"
-                />
 
-                <div className="mt-3 flex gap-2">
+                <div className="flex gap-2">
                   <button
-                    className="flex-1 px-3 py-1 bg-emerald-600 rounded hover:opacity-90"
+                    className="flex-1 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold transition-all shadow-lg shadow-emerald-600/30"
                     onClick={() => generateQueue(runningTimerSeconds)}
                   >
                     Generate Queue
                   </button>
-
                   <button
-                    className="px-3 py-1 bg-yellow-600 rounded hover:opacity-90"
+                    className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg font-semibold transition-all"
                     onClick={() => resetPresented()}
+                    title="Reset presented history"
                   >
                     Reset
                   </button>
@@ -551,7 +648,7 @@ export default function PresentationGenerator({ interns }: Props) {
               </div>
             </div>
           </div>
-        </aside>
+        </div>
       </div>
     </div>
   );
