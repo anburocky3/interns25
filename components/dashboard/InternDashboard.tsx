@@ -7,11 +7,12 @@ import {
   startLabel,
   remainingDays as calcRemainingDays,
 } from "@/lib/helpers";
-import { doc, onSnapshot, setDoc } from "firebase/firestore";
+import { doc, onSnapshot, setDoc, deleteField } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { ArrowLeft, GraduationCap, Wifi } from "lucide-react";
 import toast from "react-hot-toast";
 import Head from "next/head";
+import AudioUpload from "@/components/AudioUpload";
 
 type SocialLinks = {
   twitter?: string | null;
@@ -33,6 +34,7 @@ type Profile = {
   location?: string | null;
   email?: string | null;
   mobile?: string | null;
+  audioIntroUrl?: string | null;
 };
 
 const DEFAULT_START_DATE = "2025-10-31";
@@ -47,6 +49,7 @@ export default function InternDashboard() {
   const [profile, setProfile] = useState<Profile>({});
   const [social, setSocial] = useState<SocialLinks>({});
   const [saving, setSaving] = useState(false);
+  const [audioIntroUrl, setAudioIntroUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -62,6 +65,7 @@ export default function InternDashboard() {
       setStartDate(data?.startDate ?? DEFAULT_START_DATE);
       setEndDate(data?.endDate ?? DEFAULT_END_DATE);
       setSocial(data?.social ?? {});
+      setAudioIntroUrl(data?.audioIntroUrl ?? null);
       setProfile({
         name: data?.name ?? null,
         avatar: data?.avatar ?? null,
@@ -73,6 +77,7 @@ export default function InternDashboard() {
         location: data?.location ?? null,
         email: data?.email ?? null,
         mobile: data?.mobile ?? null,
+        audioIntroUrl: data?.audioIntroUrl ?? null,
       });
       setProfileLoading(false);
     });
@@ -143,8 +148,9 @@ export default function InternDashboard() {
           hasWifi: profile.hasWifi ?? false,
           location: profile.location ?? null,
           mobile: profile.mobile ?? null,
+          audioIntroUrl: audioIntroUrl ?? null,
         },
-        { merge: true }
+        { merge: true },
       );
       toast.success("Profile saved");
     } catch (err) {
@@ -265,6 +271,23 @@ export default function InternDashboard() {
               </div>
             </div>
           </div>
+
+          <AudioUpload
+            currentAudioUrl={audioIntroUrl ?? undefined}
+            userName={profile.name ?? user?.displayName ?? "user"}
+            onUploadSuccess={(url) => {
+              setAudioIntroUrl(url);
+              const ref = doc(db, "users", user!.uid);
+              setDoc(
+                ref,
+                { audioIntroUrl: url === undefined ? deleteField() : url },
+                { merge: true },
+              ).catch((err) => {
+                console.error("Error saving audio URL:", err);
+                toast.error("Failed to save audio URL");
+              });
+            }}
+          />
 
           <div className="bg-white/5 backdrop-blur-md border border-white/6 p-6 rounded-xl shadow-md">
             <h2 className="text-lg font-semibold text-white mb-4">

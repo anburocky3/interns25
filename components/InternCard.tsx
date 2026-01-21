@@ -12,6 +12,7 @@ import {
   InstagramIcon,
   LucideGithub,
   GithubIcon,
+  Volume2,
 } from "lucide-react";
 import { githubAvatarFromUrl } from "@/lib/helpers";
 import { InternProfile } from "@/types";
@@ -68,6 +69,20 @@ export const InternCard: React.FC<{ intern: InternProfile }> = ({ intern }) => {
         <p className="text-gray-300 text-sm truncate">
           {intern.position ?? "Intern"}
         </p>
+
+        {/* Self-Introduction Audio Player */}
+        {intern.audioIntroUrl && (
+          <div className="mt-3 flex items-center gap-2 bg-purple-500/10 border border-purple-500/30 rounded-lg p-2">
+            <Volume2 size={16} className="text-purple-400 shrink-0" />
+            <audio
+              src={intern.audioIntroUrl}
+              controls
+              className="flex-1 h-6"
+              controlsList="nodownload"
+            />
+          </div>
+        )}
+
         <div className="flex items-center justify-center gap-2 mt-2">
           {intern.location ? (
             <span className="text-xs bg-neutral-700 text-gray-200 px-2 py-1 rounded">

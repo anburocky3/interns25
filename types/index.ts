@@ -9,6 +9,8 @@ export interface InternProfile {
   hasWifi?: boolean;
   location?: string;
   mobile?: string;
+  audioIntroUrl?: string;
+  audioIntroUploadedAt?: string;
   social?: {
     linkedin?: string;
     github?: string;
