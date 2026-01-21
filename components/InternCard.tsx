@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useRef, useState } from "react";
 import Image from "next/image";
 import {
   GraduationCap,
@@ -13,11 +13,56 @@ import {
   LucideGithub,
   GithubIcon,
   Volume2,
+  Play,
+  Pause,
 } from "lucide-react";
 import { githubAvatarFromUrl } from "@/lib/helpers";
 import { InternProfile } from "@/types";
 
 export const InternCard: React.FC<{ intern: InternProfile }> = ({ intern }) => {
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+
+  const togglePlay = () => {
+    if (audioRef.current) {
+      if (isPlaying) {
+        audioRef.current.pause();
+      } else {
+        audioRef.current.play();
+      }
+      setIsPlaying(!isPlaying);
+    }
+  };
+
+  const handleTimeUpdate = () => {
+    if (audioRef.current) {
+      setCurrentTime(audioRef.current.currentTime);
+    }
+  };
+
+  const handleLoadedMetadata = () => {
+    if (audioRef.current) {
+      setDuration(audioRef.current.duration);
+    }
+  };
+
+  const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (audioRef.current && duration) {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const percent = (e.clientX - rect.left) / rect.width;
+      audioRef.current.currentTime = percent * duration;
+    }
+  };
+
+  const formatTime = (time: number) => {
+    if (!time || isNaN(time)) return "0:00";
+    const minutes = Math.floor(time / 60);
+    const seconds = Math.floor(time % 60);
+    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+  };
+
   const avatarSrc =
     intern.avatar ||
     githubAvatarFromUrl(intern.social?.github) ||
@@ -70,19 +115,6 @@ export const InternCard: React.FC<{ intern: InternProfile }> = ({ intern }) => {
           {intern.position ?? "Intern"}
         </p>
 
-        {/* Self-Introduction Audio Player */}
-        {intern.audioIntroUrl && (
-          <div className="mt-3 flex items-center gap-2 bg-purple-500/10 border border-purple-500/30 rounded-lg p-2">
-            <Volume2 size={16} className="text-purple-400 shrink-0" />
-            <audio
-              src={intern.audioIntroUrl}
-              controls
-              className="flex-1 h-6"
-              controlsList="nodownload"
-            />
-          </div>
-        )}
-
         <div className="flex items-center justify-center gap-2 mt-2">
           {intern.location ? (
             <span className="text-xs bg-neutral-700 text-gray-200 px-2 py-1 rounded">
@@ -106,6 +138,53 @@ export const InternCard: React.FC<{ intern: InternProfile }> = ({ intern }) => {
             </span>
           ) : null}
         </div>
+
+        {/* Self-Introduction Audio Player */}
+        {intern.audioIntroUrl && (
+          <div className="mt-4 bg-linear-to-r from-purple-500/20 to-indigo-500/20 border border-purple-500/40 rounded-xl p-1 hover:border-purple-500/60 transition-all">
+            <audio
+              ref={audioRef}
+              src={intern.audioIntroUrl}
+              onTimeUpdate={handleTimeUpdate}
+              onLoadedMetadata={handleLoadedMetadata}
+              onEnded={() => setIsPlaying(false)}
+            />
+            <div className="flex items-center gap-3">
+              <button
+                onClick={togglePlay}
+                className="shrink-0 p-1 bg-linear-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-full transition-all shadow-lg hover:shadow-purple-500/50"
+              >
+                {isPlaying ? <Pause size={16} /> : <Play size={16} />}
+              </button>
+              <div className="flex-1 flex flex-col gap-2">
+                {/* Progress Bar */}
+                <div
+                  onClick={handleProgressClick}
+                  className="group relative w-full h-2 bg-gray-700 rounded-full cursor-pointer hover:h-2.5 transition-all"
+                >
+                  <div
+                    className="bg-linear-to-r from-purple-400 to-indigo-400 h-full rounded-full transition-all shadow-lg shadow-purple-500/50 relative"
+                    style={{
+                      width: duration
+                        ? `${(currentTime / duration) * 100}%`
+                        : "0%",
+                    }}
+                  >
+                    {duration > 0 && (
+                      <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity" />
+                    )}
+                  </div>
+                </div>
+
+                {/* Time Display */}
+                {/* <div className="flex justify-between items-center text-xs text-gray-500 font-mono">
+                  <span>{formatTime(currentTime)}</span>
+                  <span>{formatTime(duration)}</span>
+                </div> */}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="mt-4 flex flex-col sm:flex-row sm:items-center gap-2 justify-center sm:space-x-3 text-sm font-semibold">
