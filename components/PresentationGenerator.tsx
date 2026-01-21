@@ -18,8 +18,6 @@ function shuffle<T>(arr: T[]) {
 type gender = "all" | "M" | "F";
 
 export default function PresentationGenerator({ interns }: Props) {
-  console.log(interns);
-
   const [gender, setGender] = useState<gender>("all");
   const [onlyStudents, setOnlyStudents] = useState(false);
   const [onlyWifi, setOnlyWifi] = useState(false);
@@ -38,7 +36,7 @@ export default function PresentationGenerator({ interns }: Props) {
   function playTone(
     freq: number,
     duration = 200,
-    type: OscillatorType = "sine"
+    type: OscillatorType = "sine",
   ) {
     try {
       const win = window as unknown as {
@@ -60,7 +58,7 @@ export default function PresentationGenerator({ interns }: Props) {
       setTimeout(() => {
         g.gain.exponentialRampToValueAtTime(
           0.0001,
-          ctx.currentTime + duration / 1000
+          ctx.currentTime + duration / 1000,
         );
         o.stop(ctx.currentTime + duration / 1000 + 0.02);
         try {
@@ -110,7 +108,7 @@ export default function PresentationGenerator({ interns }: Props) {
       if (typeof window === "undefined") return;
       localStorage.setItem(
         "presentation_presented_ids",
-        JSON.stringify(presentedIds)
+        JSON.stringify(presentedIds),
       );
     } catch {
       // ignore
@@ -405,10 +403,10 @@ export default function PresentationGenerator({ interns }: Props) {
                           {isRunning
                             ? "⏸ Pause"
                             : expired
-                            ? "▶ Start"
-                            : countdown === null
-                            ? "▶ Start"
-                            : "▶ Resume"}
+                              ? "▶ Start"
+                              : countdown === null
+                                ? "▶ Start"
+                                : "▶ Resume"}
                         </button>
 
                         <button
@@ -453,7 +451,7 @@ export default function PresentationGenerator({ interns }: Props) {
                   <div>
                     ⏲ Est. total:{" "}
                     {formatCountdown(
-                      (queue.length - 1) * (runningTimerSeconds || 0)
+                      (queue.length - 1) * (runningTimerSeconds || 0),
                     )}
                   </div>
                 )}
@@ -614,7 +612,7 @@ export default function PresentationGenerator({ interns }: Props) {
                       value={runningTimerSeconds}
                       onChange={(e) =>
                         setRunningTimerSeconds(
-                          Math.max(30, Number(e.target.value || 0))
+                          Math.max(30, Number(e.target.value || 0)),
                         )
                       }
                       className="flex-1 px-2 py-2 bg-transparent text-white text-sm font-medium text-center border-l border-r border-neutral-600/30 focus:outline-none"

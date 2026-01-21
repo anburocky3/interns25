@@ -3,17 +3,17 @@ import React, { useEffect, useState } from "react";
 import { db, serverTimestamp } from "@/lib/firebase";
 import {
   collection,
-  query,
-  where,
   onSnapshot,
   setDoc,
   doc,
-  orderBy,
+  query,
+  where,
 } from "firebase/firestore";
 import { useAuth } from "@/context/AuthContext";
 import toast from "react-hot-toast";
 import { GraduationCap, Wifi } from "lucide-react";
 import { formatIsoDate, githubAvatarFromUrl } from "@/lib/helpers";
+import { getCachedUsers } from "@/lib/getUsers";
 import Image from "next/image";
 import Link from "next/link";
 import { InternProfile } from "@/types";
@@ -29,7 +29,7 @@ export default function ModeratorPanel() {
   const [attendance, setAttendance] = useState<Record<string, boolean>>({});
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [sessionLink, setSessionLink] = useState(
-    "https://meet.google.com/add-iwqc-peo"
+    "https://meet.google.com/add-iwqc-peo",
   );
   const [sessionNote, setSessionNote] = useState("");
   const [loading, setLoading] = useState(true);
@@ -40,50 +40,27 @@ export default function ModeratorPanel() {
   const dateKey = todayISO();
 
   useEffect(() => {
-    const usersRef = collection(db, "users");
-    const q = query(
-      usersRef,
-      where("role", "==", "intern"),
-      orderBy("name", "asc")
-    );
-    const unsub = onSnapshot(q, (snap) => {
-      const list: InternProfile[] = [];
-      snap.forEach((s) => {
-        const d = s.data() as InternProfile;
-        list.push({
-          uid: d.uid,
-          name: d.name,
-          email: d.email,
-          avatar: d?.avatar,
-          position: d?.position,
-          isStudent: Boolean(d?.isStudent),
-          hasWifi: Boolean(d?.hasWifi),
-          location: d?.location,
-          mobile: d?.mobile,
-          social: {
-            linkedin: d?.social?.linkedin,
-            github: d?.social?.github,
-            twitter: d?.social?.twitter,
-            website: d?.social?.website,
-            instagram: d?.social?.instagram,
-            tasks: d?.social?.tasks,
-          },
+    const loadInterns = async () => {
+      try {
+        const users = await getCachedUsers("dev");
+        setInterns(users);
+        // reset selection when intern list changes
+        setSelected((prev) => {
+          const next: Record<string, boolean> = {};
+          users.forEach((it) => {
+            next[it.uid] = !!prev[it.uid];
+          });
+          return next;
         });
-      });
-      const filtered = list.filter((i) => !!i.uid);
-      setInterns(filtered);
-      // reset selection when intern list changes
-      setSelected((prev) => {
-        const next: Record<string, boolean> = {};
-        filtered.forEach((it) => {
-          next[it.uid] = !!prev[it.uid];
-        });
-        return next;
-      });
-      setLoading(false);
-    });
+      } catch (err) {
+        console.error("Error loading interns:", err);
+        toast.error("Failed to load interns");
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    return () => unsub();
+    loadInterns();
   }, []);
 
   useEffect(() => {
@@ -146,7 +123,7 @@ export default function ModeratorPanel() {
           updatedAt: serverTimestamp(),
           markedBy: user?.uid || null,
         },
-        { merge: true }
+        { merge: true },
       );
       toast.success("Attendance updated");
     } catch (err) {
@@ -173,7 +150,7 @@ export default function ModeratorPanel() {
           postedAt: serverTimestamp(),
           date: dateKey,
         },
-        { merge: true }
+        { merge: true },
       );
       toast.success("Session link posted");
       setSessionLink("");
@@ -195,7 +172,7 @@ export default function ModeratorPanel() {
           updatedAt: serverTimestamp(),
           updatedBy: user?.uid || null,
         },
-        { merge: true }
+        { merge: true },
       );
       toast.success("Saved minutes of meeting");
     } catch (err) {
@@ -260,7 +237,7 @@ export default function ModeratorPanel() {
                       updatedAt: serverTimestamp(),
                       markedBy: user?.uid || null,
                     },
-                    { merge: true }
+                    { merge: true },
                   );
                 });
                 await Promise.all(promises);
@@ -292,7 +269,7 @@ export default function ModeratorPanel() {
                       updatedAt: serverTimestamp(),
                       markedBy: user?.uid || null,
                     },
-                    { merge: true }
+                    { merge: true },
                   );
                 });
                 await Promise.all(promises);

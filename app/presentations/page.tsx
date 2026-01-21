@@ -38,7 +38,7 @@ export const metadata: Metadata = {
 };
 
 export default async function PresentationPage() {
-  const interns = await getCachedUsers();
+  const interns = await getCachedUsers("dev");
 
   return (
     <div className="p-6">
