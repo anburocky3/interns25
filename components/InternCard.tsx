@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { githubAvatarFromUrl } from "@/lib/helpers";
 import { InternProfile } from "@/types";
+import Link from "next/link";
 
 export const InternCard: React.FC<{ intern: InternProfile }> = ({ intern }) => {
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -49,6 +50,8 @@ export const InternCard: React.FC<{ intern: InternProfile }> = ({ intern }) => {
   };
 
   const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
     if (audioRef.current && duration) {
       const rect = e.currentTarget.getBoundingClientRect();
       const percent = (e.clientX - rect.left) / rect.width;
@@ -69,7 +72,11 @@ export const InternCard: React.FC<{ intern: InternProfile }> = ({ intern }) => {
     "/default-avatar.png";
 
   return (
-    <div className="bg-neutral-800 rounded-lg p-4 text-center shadow-md">
+    <Link
+      href={`/interns/${intern.slug || intern.uid}`}
+      aria-label={`View ${intern.name}'s profile`}
+      className="bg-neutral-800 rounded-lg p-4 text-center shadow-md hover:scale-105 transition-transform duration-300 ease-in-out"
+    >
       <div className="relative flex justify-center mt-2 mb-5">
         <Image
           alt={intern.name}
@@ -82,27 +89,33 @@ export const InternCard: React.FC<{ intern: InternProfile }> = ({ intern }) => {
 
         <div className="absolute top-2 right-2 flex items-center gap-2">
           {intern.social?.instagram ? (
-            <a
-              href={intern.social?.instagram}
-              target="_blank"
-              rel="noreferrer"
+            <button
+              type="button"
               aria-label="instagram"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                window.open(intern.social!.instagram, "_blank");
+              }}
               className="bg-amber-500 hover:bg-amber-600 text-white p-2 rounded-full shadow-md"
             >
               <InstagramIcon size={16} />
-            </a>
+            </button>
           ) : null}
 
           {intern.social?.linkedin ? (
-            <a
-              href={intern.social.linkedin}
-              target="_blank"
-              rel="noreferrer"
+            <button
+              type="button"
               aria-label="LinkedIn"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                window.open(intern.social!.linkedin!, "_blank");
+              }}
               className="bg-[#0A66C2] hover:bg-[#085aa8] text-white p-2 rounded-full shadow-md"
             >
               <Linkedin size={16} />
-            </a>
+            </button>
           ) : null}
         </div>
       </div>
@@ -151,7 +164,12 @@ export const InternCard: React.FC<{ intern: InternProfile }> = ({ intern }) => {
             />
             <div className="flex items-center gap-3">
               <button
-                onClick={togglePlay}
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  togglePlay();
+                }}
                 className="shrink-0 p-1 bg-linear-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-full transition-all shadow-lg hover:shadow-purple-500/50"
               >
                 {isPlaying ? <Pause size={16} /> : <Play size={16} />}
@@ -187,28 +205,36 @@ export const InternCard: React.FC<{ intern: InternProfile }> = ({ intern }) => {
         )}
       </div>
 
-      <div className="mt-4 flex flex-col sm:flex-row sm:items-center gap-2 justify-center sm:space-x-3 text-sm font-semibold">
-        <a
-          target="_blank"
-          rel="noreferrer"
-          className="flex justify-center bg-amber-500 hover:bg-amber-600 items-center px-3 text-white py-1.5 rounded"
-          href={intern.social?.tasks}
+      <div className="mt-4 flex flex-col sm:flex-row sm:items-center gap-2 justify-center sm:space-x-1 text-sm font-semibold">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (intern.social?.tasks)
+              window.open(intern.social.tasks, "_blank");
+          }}
+          className="flex justify-center bg-amber-500 hover:bg-amber-600 items-center px-3 text-white py-1.5 rounded w-full"
         >
-          <ExternalLink className="mr-1" size={16} />
+          <ExternalLink className="mr-2" size={16} />
           Tasks
-        </a>
+        </button>
 
-        <a
-          target="_blank"
-          rel="noreferrer"
-          className="flex justify-center bg-white hover:bg-gray-200 items-center px-3 text-neutral-900 py-1.5 rounded"
-          href={intern.social?.github}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (intern.social?.github)
+              window.open(intern.social.github, "_blank");
+          }}
+          className="flex justify-center bg-white hover:bg-gray-200 items-center px-3 text-neutral-900 py-1.5 rounded w-full"
         >
-          <GithubIcon className="mr-1" size={16} />
+          <GithubIcon className="mr-2" size={16} />
           Github
-        </a>
+        </button>
       </div>
-    </div>
+    </Link>
   );
 };
 

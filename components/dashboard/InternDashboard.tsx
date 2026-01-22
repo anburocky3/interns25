@@ -7,14 +7,14 @@ import {
   startLabel,
   remainingDays as calcRemainingDays,
 } from "@/lib/helpers";
-import { doc, onSnapshot, setDoc, deleteField } from "firebase/firestore";
+import { doc, onSnapshot, deleteField, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { ArrowLeft, ArrowRight, GraduationCap, Wifi } from "lucide-react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 import toast from "react-hot-toast";
 import Head from "next/head";
 import AudioUpload from "@/components/AudioUpload";
-import TypingTestModule from "../TypingTestModule";
 import Link from "next/link";
+import { InternProfile } from "@/types";
 
 type SocialLinks = {
   twitter?: string | null;
@@ -23,20 +23,6 @@ type SocialLinks = {
   instagram?: string | null;
   tasks?: string | null;
   website?: string | null;
-};
-
-type Profile = {
-  name?: string | null;
-  avatar?: string | null;
-  position?: string | null;
-  gender?: string | null;
-  social?: SocialLinks | null;
-  isStudent?: boolean | null;
-  hasWifi?: boolean | null;
-  location?: string | null;
-  email?: string | null;
-  mobile?: string | null;
-  audioIntroUrl?: string | null;
 };
 
 const DEFAULT_START_DATE = "2025-10-31";
@@ -48,20 +34,18 @@ export default function InternDashboard() {
   const [leavesTaken, setLeavesTaken] = useState<number>(0);
   const [startDate, setStartDate] = useState<string | null>(null);
   const [endDate, setEndDate] = useState<string | null>(null);
-  const [profile, setProfile] = useState<Profile>({});
+  const [profile, setProfile] = useState<InternProfile>();
   const [social, setSocial] = useState<SocialLinks>({});
-  const [saving, setSaving] = useState(false);
   const [audioIntroUrl, setAudioIntroUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
-    setProfileLoading(true);
     const ref = doc(db, "users", user.uid);
     const unsub = onSnapshot(ref, (snap) => {
       const data = snap.data() as
         | ({ leavesTaken?: number; startDate?: string; endDate?: string } & {
             social?: SocialLinks;
-          } & Profile)
+          } & InternProfile)
         | undefined;
       setLeavesTaken(data?.leavesTaken ?? 0);
       setStartDate(data?.startDate ?? DEFAULT_START_DATE);
@@ -69,17 +53,18 @@ export default function InternDashboard() {
       setSocial(data?.social ?? {});
       setAudioIntroUrl(data?.audioIntroUrl ?? null);
       setProfile({
-        name: data?.name ?? null,
-        avatar: data?.avatar ?? null,
-        position: data?.position ?? null,
-        gender: data?.gender ?? null,
+        uid: data?.uid ?? user.uid,
+        name: data?.name ?? "",
+        avatar: data?.avatar ?? "",
+        position: data?.position ?? "",
+        gender: data?.gender ?? undefined,
         social: data?.social ?? {},
         isStudent: data?.isStudent ?? false,
         hasWifi: data?.hasWifi ?? false,
-        location: data?.location ?? null,
-        email: data?.email ?? null,
-        mobile: data?.mobile ?? null,
-        audioIntroUrl: data?.audioIntroUrl ?? null,
+        location: data?.location ?? undefined,
+        email: data?.email ?? "",
+        mobile: data?.mobile ?? undefined,
+        audioIntroUrl: data?.audioIntroUrl ?? undefined,
       });
       setProfileLoading(false);
     });
@@ -132,37 +117,6 @@ export default function InternDashboard() {
   const startLabelText = startLabel(startDate, DEFAULT_START_DATE);
   const remainingDays = calcRemainingDays(endDate, DEFAULT_END_DATE);
 
-  const saveProfile = async () => {
-    if (!user) return;
-    setSaving(true);
-    try {
-      const ref = doc(db, "users", user.uid);
-      // merge updated profile and social links
-      await setDoc(
-        ref,
-        {
-          name: profile.name ?? null,
-          avatar: profile.avatar ?? null,
-          position: profile.position ?? null,
-          gender: profile.gender ?? null,
-          social: social ?? {},
-          isStudent: profile.isStudent ?? false,
-          hasWifi: profile.hasWifi ?? false,
-          location: profile.location ?? null,
-          mobile: profile.mobile ?? null,
-          audioIntroUrl: audioIntroUrl ?? null,
-        },
-        { merge: true },
-      );
-      toast.success("Profile saved");
-    } catch (err) {
-      console.error("Error saving profile:", err);
-      toast.error("Failed to save profile");
-    } finally {
-      setSaving(false);
-    }
-  };
-
   if (loading || profileLoading) {
     return (
       <div className="p-8">
@@ -186,63 +140,80 @@ export default function InternDashboard() {
       <Head>
         <title>Intern Dashboard - CyberDude Interns Portal</title>
       </Head>
-      <header className="flex items-center gap-6">
-        <div className="w-28 h-28 rounded-full overflow-hidden bg-linear-to-br from-sky-500 to-indigo-600 flex items-center justify-center">
-          {profile.avatar ? (
-            <Image
-              src={profile.avatar}
-              alt={profile.name ?? "avatar"}
-              width={112}
-              height={112}
-              className="object-cover"
-            />
-          ) : (
-            <div className="text-white font-bold text-2xl">
-              {(profile.name ?? "")
-                .split(" ")
-                .map((s) => s[0])
-                .slice(0, 2)
-                .join("")}
+      <header className="flex justify-between items-center gap-6">
+        <div className="flex items-center justify-center space-x-4">
+          <div className="w-28 h-28 rounded-full overflow-hidden bg-linear-to-br from-sky-500 to-indigo-600 flex items-center justify-center">
+            {profile?.avatar ? (
+              <Image
+                src={profile.avatar}
+                alt={profile.name ?? "avatar"}
+                width={112}
+                height={112}
+                className="object-cover"
+              />
+            ) : (
+              <div className="text-white font-bold text-2xl">
+                {(profile?.name ?? "")
+                  .split(" ")
+                  .map((s) => s[0])
+                  .slice(0, 2)
+                  .join("")}
+              </div>
+            )}
+          </div>
+          <div>
+            <h1 className="text-3xl font-extrabold text-sky-300">
+              {profile?.name ?? user.displayName ?? user.email}
+            </h1>
+            <div className="text-lg text-indigo-200">
+              {profile?.gender ? `${profile.gender} • ` : ""}
+              {profile?.position ?? "Intern"}
             </div>
-          )}
-        </div>
-        <div>
-          <h1 className="text-3xl font-extrabold text-sky-300">
-            {profile.name ?? user.displayName ?? user.email}
-          </h1>
-          <div className="text-lg text-indigo-200">
-            {profile.gender ? `${profile.gender} • ` : ""}
-            {profile.position ?? "Intern"}
-          </div>
-          <div className="text-sm text-gray-300 mt-2">
-            {profile.location ?? "Location not set"}
-          </div>
-          <div className="mt-2 text-sm text-sky-200">
-            <a
-              className="hover:underline"
-              href={`mailto:${profile.email ?? user.email}`}
-            >
-              {profile.email ?? user.email}
-            </a>
-          </div>
-          {profile.mobile && (
-            <div className="mt-1 text-sm text-gray-300">{profile.mobile}</div>
-          )}
-          <div className="mt-3 flex gap-3">
-            {profile.isStudent && (
-              <span className="px-3 py-1 rounded-full text-sm bg-green-600 text-white flex items-center">
-                <GraduationCap size={16} className="inline-block mr-1" />
-                <span>Student</span>
-              </span>
-            )}
+            <div className="text-sm text-gray-300 mt-2">
+              {profile?.location ?? "Location not set"}
+            </div>
+            {/* <div className="mt-2 text-sm text-sky-200">
+              <a
+                className="hover:underline"
+                href={`mailto:${profile.email ?? user.email}`}
+              >
+                {profile.email ?? user.email}
+              </a>
+            </div>
+            {profile.mobile && (
+              <div className="mt-1 text-sm text-gray-300">{profile.mobile}</div>
+            )} */}
+            {/* <div className="mt-3 flex gap-3">
+              {profile.isStudent && (
+                <span className="px-3 py-1 rounded-full text-sm bg-green-600 text-white flex items-center">
+                  <GraduationCap size={16} className="inline-block mr-1" />
+                  <span>Student</span>
+                </span>
+              )}
 
-            {profile.hasWifi && (
-              <span className="px-3 py-1 rounded-full text-sm bg-blue-500 text-white flex items-center">
-                <Wifi size={16} className="inline-block mr-1" />
-                <span>Wifi</span>
-              </span>
-            )}
+              {profile.hasWifi && (
+                <span className="px-3 py-1 rounded-full text-sm bg-blue-500 text-white flex items-center">
+                  <Wifi size={16} className="inline-block mr-1" />
+                  <span>Wifi</span>
+                </span>
+              )}
+            </div> */}
           </div>
+        </div>
+
+        <div className="mt-4 flex flex-wrap gap-3 text-sm">
+          <Link
+            href={`/interns/${profile?.slug ?? user.uid}`}
+            className="px-3 py-1.5 rounded-full bg-white/10 text-white hover:bg-white/20"
+          >
+            View profile
+          </Link>
+          <Link
+            href={`/profile/edit`}
+            className="px-3 py-1.5 rounded-full bg-emerald-600 text-white hover:bg-emerald-500"
+          >
+            Edit profile
+          </Link>
         </div>
       </header>
 
@@ -276,7 +247,7 @@ export default function InternDashboard() {
 
           <AudioUpload
             currentAudioUrl={audioIntroUrl ?? undefined}
-            userName={profile.name ?? user?.displayName ?? "user"}
+            userName={profile?.name ?? user?.displayName ?? "user"}
             onUploadSuccess={(url) => {
               setAudioIntroUrl(url);
               const ref = doc(db, "users", user!.uid);
@@ -290,199 +261,6 @@ export default function InternDashboard() {
               });
             }}
           />
-
-          <div className="bg-white/5 backdrop-blur-md border border-white/6 p-6 rounded-xl shadow-md">
-            <h2 className="text-lg font-semibold text-white mb-4">
-              Profile Details
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm text-gray-300">Full name</label>
-                <input
-                  value={profile.name ?? ""}
-                  onChange={(e) =>
-                    setProfile((p) => ({ ...p, name: e.target.value }))
-                  }
-                  className="mt-1 w-full rounded-lg px-3 py-2 bg-slate-800/60 border border-white/6 text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
-                />
-              </div>
-              <div>
-                <label className="text-sm text-gray-300">Position</label>
-                <select
-                  value={profile.position ?? ""}
-                  onChange={(e) =>
-                    setProfile((p) => ({ ...p, position: e.target.value }))
-                  }
-                  className="mt-1 w-full rounded-lg px-3 py-2 bg-slate-800/60 border border-white/6 text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
-                >
-                  <option value="">Choose your position</option>
-                  <option value="Fullstack Engineer Intern">
-                    Fullstack Engineer Intern
-                  </option>
-                  <option value="UI/UX Engineer Intern">
-                    UI/UX Engineer Intern
-                  </option>
-                  <option value="UAT Tester Intern">UAT Tester Intern</option>
-                  <option value="Content Creator Intern">
-                    Content Creator Intern
-                  </option>
-                  <option value="Business Analyst Intern">
-                    Business Analyst Intern
-                  </option>
-                  <option value="HR Intern">HR Intern</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-sm text-gray-300">Email</label>
-                <input
-                  value={profile.email ?? user.email ?? ""}
-                  onChange={(e) =>
-                    setProfile((p) => ({ ...p, email: e.target.value }))
-                  }
-                  disabled
-                  placeholder="you@example.com"
-                  className="mt-1 w-full rounded-lg px-3 py-2 bg-slate-800/60 border border-white/6 text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
-                />
-              </div>
-              <div>
-                <label className="text-sm text-gray-300">Mobile</label>
-                <input
-                  value={profile.mobile ?? ""}
-                  onChange={(e) =>
-                    setProfile((p) => ({ ...p, mobile: e.target.value }))
-                  }
-                  placeholder="+91 9876543211"
-                  className="mt-1 w-full rounded-lg px-3 py-2 bg-slate-800/60 border border-white/6 text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
-                />
-              </div>
-              <div>
-                <label className="text-sm text-gray-300">Location</label>
-                <input
-                  value={profile.location ?? ""}
-                  onChange={(e) =>
-                    setProfile((p) => ({ ...p, location: e.target.value }))
-                  }
-                  placeholder="Location"
-                  className="mt-1 w-full rounded-lg px-3 py-2 bg-slate-800/60 border border-white/6 text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
-                />
-                <small className="text-gray-600">Format: City, Country</small>
-              </div>
-              <div>
-                <label className="text-sm text-gray-300">Gender</label>
-                <select
-                  value={profile.gender ?? ""}
-                  onChange={(e) =>
-                    setProfile((p) => ({ ...p, gender: e.target.value }))
-                  }
-                  className="mt-1 w-full rounded-lg px-3 py-2 bg-slate-800/60 border border-white/6 text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
-                >
-                  <option value="">Choose gender</option>
-                  <option value="M">Male</option>
-                  <option value="F">Female</option>
-                  <option value="O">Other</option>
-                </select>
-              </div>
-              <div className="flex items-center gap-3">
-                <label className="text-sm text-gray-300">Student</label>
-                <input
-                  type="checkbox"
-                  checked={!!profile.isStudent}
-                  onChange={(e) =>
-                    setProfile((p) => ({ ...p, isStudent: e.target.checked }))
-                  }
-                />
-                <label className="text-sm text-gray-300">Has Wifi</label>
-                <input
-                  type="checkbox"
-                  checked={!!profile.hasWifi}
-                  onChange={(e) =>
-                    setProfile((p) => ({ ...p, hasWifi: e.target.checked }))
-                  }
-                />
-              </div>
-            </div>
-            <div className="mt-4 text-right">
-              <button
-                onClick={saveProfile}
-                disabled={saving}
-                className="px-4 py-1 rounded-full bg-emerald-500 text-white hover:bg-emerald-400 transition shadow"
-              >
-                {saving ? "Saving..." : "Save"}
-              </button>
-            </div>
-          </div>
-
-          <div className="bg-white/5 backdrop-blur-md border border-white/6 p-6 rounded-xl shadow-md">
-            <h2 className="text-lg font-semibold text-white mb-4">
-              Social Links & Tasks
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm text-gray-300">Instagram</label>
-                <input
-                  value={social.instagram ?? ""}
-                  onChange={(e) =>
-                    setSocial((s) => ({ ...s, instagram: e.target.value }))
-                  }
-                  placeholder="https://instagram.com/username"
-                  className="mt-1 w-full rounded-lg px-3 py-2 bg-slate-800/60 border border-white/6 text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
-                />
-              </div>
-              <div>
-                <label className="text-sm text-gray-300">LinkedIn</label>
-                <input
-                  value={social.linkedin ?? ""}
-                  onChange={(e) =>
-                    setSocial((s) => ({ ...s, linkedin: e.target.value }))
-                  }
-                  placeholder="https://linkedin.com/in/username"
-                  className="mt-1 w-full rounded-lg px-3 py-2 bg-slate-800/60 border border-white/6 text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
-                />
-              </div>
-              <div>
-                <label className="text-sm text-gray-300">GitHub</label>
-                <input
-                  value={social.github ?? ""}
-                  onChange={(e) =>
-                    setSocial((s) => ({ ...s, github: e.target.value }))
-                  }
-                  className="mt-1 w-full rounded-lg px-3 py-2 bg-slate-800/60 border border-white/6 text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
-                  placeholder="https://github.com/username"
-                />
-              </div>
-              <div>
-                <label className="text-sm text-gray-300">Tasks / Tracker</label>
-                <input
-                  value={social.tasks ?? ""}
-                  onChange={(e) =>
-                    setSocial((s) => ({ ...s, tasks: e.target.value }))
-                  }
-                  className="mt-1 w-full rounded-lg px-3 py-2 bg-slate-800/60 border border-white/6 text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
-                  placeholder="Link to tasks or short note"
-                />
-              </div>
-              <div className="md:col-span-2">
-                <label className="text-sm text-gray-300">Website</label>
-                <input
-                  value={social.website ?? ""}
-                  onChange={(e) =>
-                    setSocial((s) => ({ ...s, website: e.target.value }))
-                  }
-                  placeholder="https://yourwebsite.com"
-                  className="mt-1 w-full rounded px-3 py-2 bg-slate-800 text-white"
-                />
-              </div>
-            </div>
-            <div className="mt-4 text-right">
-              <button
-                onClick={saveProfile}
-                disabled={saving}
-                className="px-4 py-2 rounded-full bg-emerald-500 text-white hover:bg-emerald-400 transition shadow"
-              >
-                Save
-              </button>
-            </div>
-          </div>
         </div>
 
         <aside className="space-y-6">

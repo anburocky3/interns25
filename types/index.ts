@@ -2,6 +2,8 @@ export interface InternProfile {
   uid: string;
   name: string;
   email: string;
+  slug?: string;
+  username?: string;
   avatar?: string;
   gender?: "M" | "F" | "O";
   position?: string;
@@ -19,7 +21,19 @@ export interface InternProfile {
     instagram?: string;
     tasks?: string;
   };
+  weeklyTasks?: WeeklyTaskEntry[];
+  updatedAt?: string;
   typingStats?: TypingStats;
+}
+
+export interface WeeklyTaskEntry {
+  week: number;
+  title?: string;
+  items?: string[];
+  status?: "planned" | "in-progress" | "done";
+  notes?: string;
+  link?: string;
+  updatedAt?: string;
 }
 
 export interface TypingStats {

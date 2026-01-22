@@ -448,7 +448,9 @@ export default function TypingTestModule() {
       <div className="p-4 bg-white/5 border border-white/10 rounded-lg">
         <div className="flex items-center gap-2 mb-3">
           <Crown className="w-5 h-5 text-yellow-400" />
-          <h3 className="font-semibold text-gray-200">Typing Leaderboard</h3>
+          <h3 className="font-semibold text-gray-200 tracking-wide">
+            Top 10 Typing Heroes
+          </h3>
         </div>
         {leadersLoading && (
           <div className="text-sm text-gray-400">Loading leaderboard...</div>
@@ -466,10 +468,16 @@ export default function TypingTestModule() {
             {leaders.map((leader, idx) => (
               <div
                 key={leader.uid}
-                className="flex items-center justify-between px-3 py-2 rounded-lg bg-slate-800/50 border border-white/5"
+                className={`flex items-center justify-between px-3 py-2 rounded-lg transition-all duration-300 bg-slate-800/50 border border-white/5 hover:border-white/20 hover:shadow-lg hover:shadow-white/10`}
               >
                 <div className="flex items-center gap-3">
-                  <div className="relative w-12 h-12 rounded-full overflow-hidden bg-linear-to-br from-indigo-500 via-purple-500 to-blue-500 shadow-lg border border-white/10">
+                  <div
+                    className={`relative w-12 h-12 rounded-full overflow-hidden bg-linear-to-br  from-indigo-500 via-purple-500 to-blue-500 shadow-lg ${
+                      idx < 3
+                        ? "border-2 border-yellow-500"
+                        : "border border-white/10"
+                    }`}
+                  >
                     {leader.social?.github ? (
                       <Image
                         src={githubAvatarFromUrl(leader.social?.github) || ""}
@@ -482,7 +490,9 @@ export default function TypingTestModule() {
                       <div className="absolute inset-0 w-full h-full bg-black/30" />
                     )}
                     <div className="absolute inset-0 bg-black/40" />
-                    <div className="absolute -top-2 -right-2 bg-slate-900/60 border border-white/10 rounded-full w-15 h-15 flex items-center justify-center  text-white font-semibold shadow-lg">
+                    <div
+                      className={`absolute -top-2 -right-2  rounded-full w-15 h-15 flex items-center justify-center  text-white font-semibold shadow-lg bg-slate-800/50 border border-white/5`}
+                    >
                       #{idx + 1}
                     </div>
                   </div>
