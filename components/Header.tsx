@@ -7,8 +7,15 @@ import { useAuth } from "@/context/AuthContext";
 import { usePathname } from "next/navigation";
 
 export const Header: React.FC = () => {
-  const { signInWithGoogle, deniedMessage, user, signOut, role, isModerator } =
-    useAuth();
+  const {
+    signInWithGoogle,
+    deniedMessage,
+    user,
+    signOut,
+    role,
+    isModerator,
+    isAdmin,
+  } = useAuth();
   const pathname = usePathname();
 
   const [alertOpen, setAlertOpen] = useState(false);
@@ -45,14 +52,78 @@ export const Header: React.FC = () => {
           </Link>
         </div>
         <div className="flex items-center space-x-6 font-medium">
-          {user ? (
+          {isAdmin && (
+            <>
+              <Link
+                href="/admin/dashboard"
+                className={`hover:text-blue-300 px-2 py-1 rounded ${
+                  isActive("/admin/dashboard")
+                    ? "text-orange-300"
+                    : "text-white/90"
+                }`}
+                aria-current={isActive("/admin/dashboard") ? "page" : undefined}
+              >
+                Dashboard
+              </Link>
+              <Link
+                href="/admin/projects"
+                className={`hover:text-blue-300 px-2 py-1 rounded ${
+                  isActive("/admin/projects")
+                    ? "text-orange-300"
+                    : "text-white/90"
+                }`}
+                aria-current={isActive("/admin/projects") ? "page" : undefined}
+              >
+                Intern Projects
+              </Link>
+              <Link
+                href="/admin/leaves"
+                className={`hover:text-blue-300 px-2 py-1 rounded ${
+                  isActive("/admin/leaves")
+                    ? "text-orange-300"
+                    : "text-white/90"
+                }`}
+                aria-current={isActive("/admin/leaves") ? "page" : undefined}
+              >
+                Intern Leaves
+              </Link>
+              <div className="flex items-center gap-3 bg-blue-900 p-2 rounded-md">
+                <Image
+                  src={user?.photoURL ?? "/images/avatar-placeholder.png"}
+                  alt={user?.displayName ?? user?.email ?? "User avatar"}
+                  width={36}
+                  height={36}
+                  className="rounded-full"
+                />
+                <div className="flex flex-col ">
+                  <span className="text-sm font-medium whitespace-nowrap">
+                    {user?.displayName?.split(" ")[0] ??
+                      user?.email?.split("@")?.[0] ??
+                      "User"}
+                  </span>
+                  <span className="text-xs">{role}</span>
+                </div>
+                <button
+                  aria-label="Logout"
+                  title="Logout"
+                  onClick={() =>
+                    signOut().finally(() => alert("Successfully logged out."))
+                  }
+                  className="p-2 rounded hover:bg-white/10"
+                >
+                  <LogOut className="h-4 w-4" />
+                </button>
+              </div>
+            </>
+          )}
+          {user && !isAdmin ? (
             <>
               <Link
                 href="/dashboard"
                 className={`hover:text-blue-300 px-2 py-1 rounded ${
                   isActive("/dashboard") ? "text-orange-300" : "text-white/90"
                 }`}
-                aria-current={isActive("/") ? "page" : undefined}
+                aria-current={isActive("/dashboard") ? "page" : undefined}
               >
                 Dashboard
               </Link>
@@ -76,15 +147,6 @@ export const Header: React.FC = () => {
                   Moderator Panel
                 </Link>
               )}
-              <Link
-                href="/leaves"
-                className={`hover:text-blue-300 px-2 py-1 rounded ${
-                  isActive("/leaves") ? "text-orange-300" : "text-white/90"
-                }`}
-                aria-current={isActive("/leaves") ? "page" : undefined}
-              >
-                Leaves
-              </Link>
               <div className="flex items-center gap-3 bg-blue-900 p-2 rounded-md">
                 <Image
                   src={user.photoURL ?? "/images/avatar-placeholder.png"}
@@ -114,43 +176,45 @@ export const Header: React.FC = () => {
               </div>
             </>
           ) : (
-            <>
-              <Link
-                href="/"
-                className={`hover:text-blue-300 px-2 py-1 rounded ${
-                  isActive("/") ? "text-orange-300" : "text-white/90"
-                }`}
-                aria-current={isActive("/") ? "page" : undefined}
-              >
-                Profiles
-              </Link>
-              <Link
-                href="/presentations"
-                className={`hover:text-blue-300 px-2 py-1 rounded ${
-                  isActive("/presentations")
-                    ? "text-orange-300"
-                    : "text-white/90"
-                }`}
-                aria-current={isActive("/presentations") ? "page" : undefined}
-              >
-                Who&apos;s Next?
-              </Link>
-              <button
-                type="button"
-                className="bg-white text-blue-600 px-4 py-1 rounded-md shadow hover:bg-gray-100"
-                onClick={() =>
-                  signInWithGoogle().catch((err: unknown) => {
-                    const message =
-                      err instanceof Error ? err.message : String(err);
-                    setAlertText(message || "Access denied.");
-                    setAlertOpen(true);
-                  })
-                }
-              >
-                <LogIn className="inline-block mr-2 h-4 w-4" />
-                <span>Login</span>
-              </button>
-            </>
+            !isAdmin && (
+              <>
+                <Link
+                  href="/"
+                  className={`hover:text-blue-300 px-2 py-1 rounded ${
+                    isActive("/") ? "text-orange-300" : "text-white/90"
+                  }`}
+                  aria-current={isActive("/") ? "page" : undefined}
+                >
+                  Profiles
+                </Link>
+                <Link
+                  href="/presentations"
+                  className={`hover:text-blue-300 px-2 py-1 rounded ${
+                    isActive("/presentations")
+                      ? "text-orange-300"
+                      : "text-white/90"
+                  }`}
+                  aria-current={isActive("/presentations") ? "page" : undefined}
+                >
+                  Who&apos;s Next?
+                </Link>
+                <button
+                  type="button"
+                  className="bg-white text-blue-600 px-4 py-1 rounded-md shadow hover:bg-gray-100"
+                  onClick={() =>
+                    signInWithGoogle().catch((err: unknown) => {
+                      const message =
+                        err instanceof Error ? err.message : String(err);
+                      setAlertText(message || "Access denied.");
+                      setAlertOpen(true);
+                    })
+                  }
+                >
+                  <LogIn className="inline-block mr-2 h-4 w-4" />
+                  <span>Login</span>
+                </button>
+              </>
+            )
           )}
         </div>
       </div>

@@ -16,6 +16,8 @@ export interface InternProfile {
   mobile?: string;
   audioIntroUrl?: string;
   audioIntroUploadedAt?: string;
+  role?: string;
+  moderator?: boolean;
   social?: {
     linkedin?: string;
     github?: string;

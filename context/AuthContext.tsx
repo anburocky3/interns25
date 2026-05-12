@@ -23,6 +23,7 @@ interface AuthContextValue {
   user: FirebaseUser | null;
   role: "intern" | "admin" | null;
   isModerator: boolean;
+  isAdmin: boolean;
   loading: boolean;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
@@ -37,18 +38,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [role, setRole] = useState<"intern" | "admin" | null>(null);
   const [isModerator, setIsModerator] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const [deniedMessage, setDeniedMessage] = useState<string | null>(null);
   const router = useRouter();
 
   useEffect(() => {
+    let unsubUser: (() => void) | undefined;
+
     const unsub = onAuthStateChanged(auth, async (u) => {
       // reset denied message on auth change
       setDeniedMessage(null);
+      setLoading(true);
+
+      if (unsubUser) {
+        unsubUser();
+        unsubUser = undefined;
+      }
 
       if (!u) {
         setUser(null);
         setRole(null);
+        setIsAdmin(false);
+        setIsModerator(false);
         setLoading(false);
         return;
       }
@@ -80,6 +92,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         }
         setUser(null);
         setRole(null);
+        setIsAdmin(false);
+        setIsModerator(false);
         setDeniedMessage(
           "This portal is for internship candidates only. Access denied.",
         );
@@ -89,7 +103,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
       setUser(u);
       setRole(null);
-      setLoading(false);
+      setIsAdmin(false);
+      setIsModerator(false);
 
       const userRef = doc(db, "users", u.uid);
       const snap = await getDoc(userRef);
@@ -104,19 +119,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       }
 
       // listen to updates on the user's profile to pick up role and moderator flag
-      const unsubUser = onSnapshot(userRef, (docSnap) => {
-        const data = docSnap.data() as
-          | { role?: string; moderator?: boolean }
-          | undefined;
-        if (data?.role === "admin") setRole("admin");
-        else setRole("intern");
-        setIsModerator(Boolean(data?.moderator));
-      });
+      let didResolveInitialSnapshot = false;
+      unsubUser = onSnapshot(
+        userRef,
+        (docSnap) => {
+          const data = docSnap.data() as
+            | { role?: string; moderator?: boolean }
+            | undefined;
+          if (data?.role === "admin") {
+            setRole("admin");
+            setIsAdmin(true);
+          } else {
+            setRole("intern");
+            setIsAdmin(false);
+          }
+          setIsModerator(Boolean(data?.moderator));
 
-      return () => unsubUser();
+          if (!didResolveInitialSnapshot) {
+            didResolveInitialSnapshot = true;
+            setLoading(false);
+          }
+        },
+        () => {
+          if (!didResolveInitialSnapshot) {
+            setLoading(false);
+          }
+        },
+      );
     });
 
-    return () => unsub();
+    return () => {
+      if (unsubUser) {
+        unsubUser();
+      }
+      unsub();
+    };
   }, []);
 
   const signInWithGoogle = async () => {
@@ -191,6 +228,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         signInWithGoogle,
         signOut,
         deniedMessage,
+        isAdmin,
       }}
     >
       {children}
